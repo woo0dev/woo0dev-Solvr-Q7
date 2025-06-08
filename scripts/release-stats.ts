@@ -38,7 +38,67 @@ interface RawRecord {
     cumulative_releases: number;
 }
 
+interface DashboardView {
+    name: string;
+    render(data: RawRecord[] | StatRecord[]): void;
+}
+
+interface ChartDefinitionBase<T> {
+    id: string;
+    title: string;
+    dataSource: "summary" | "raw";
+    chartType: "line" | "bar" | "pie";
+    transform: (data: T[]) => { x: string; y: number }[];
+}
+
+type ChartDefinition =
+    | (ChartDefinitionBase<StatRecord> & { dataSource: "summary" })
+    | (ChartDefinitionBase<RawRecord> & { dataSource: "raw" });
+
 const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+
+export const chartDefinitions: ChartDefinition[] = [
+    {
+        id: "releases_per_day",
+        title: "일별 릴리스 수",
+        dataSource: "summary",
+        chartType: "bar",
+        transform: (data: StatRecord[]) => {
+            return data
+                .filter((d) => d.period === "day")
+                .map((d) => ({ x: d.date, y: d.count }));
+        },
+    },
+    {
+        id: "weekly_trend",
+        title: "주간 릴리스 트렌드",
+        dataSource: "summary",
+        chartType: "line",
+        transform: (data: StatRecord[]) => {
+            return data
+                .filter((d) => d.period === "week")
+                .map((d) => ({ x: d.date, y: d.count }));
+        },
+    },
+    {
+        id: "release_gap_distribution",
+        title: "릴리스 간 간격 분포",
+        dataSource: "raw",
+        chartType: "bar",
+        transform: (data: RawRecord[]) => {
+            return data.map((d) => ({ x: d.date, y: d.release_gap_days }));
+        },
+    },
+    {
+        id: "cumulative_releases",
+        title: "누적 릴리스 수",
+        dataSource: "raw",
+        chartType: "line",
+        transform: (data: RawRecord[]) => {
+            return data.map((d) => ({ x: d.date, y: d.cumulative_releases }));
+        },
+    },
+];
 
 async function fetchReleases(owner: string, repo: string): Promise<Release[]> {
     let releases: Release[] = [];
@@ -144,6 +204,21 @@ function generateRawReleaseStats(releases: Release[], repo: string): RawRecord[]
     return rawStats;
 }
 
+function renderDashboard(
+    charts: ChartDefinition[],
+    summaryData: StatRecord[],
+    rawData: RawRecord[]
+) {
+    for (const chart of charts) {
+        console.log(`\n=== ${chart.title} (${chart.chartType}) ===`);
+        const sourceData = chart.dataSource === "summary" ? summaryData : rawData;
+        const transformed = chart.transform(sourceData as any);
+        transformed.forEach(({ x, y }) => {
+            console.log(`x: ${x}, y: ${y}`);
+        });
+    }
+}
+
 async function main() {
     const repos: Repo[] = [
         { owner: "daangn", repo: "stackflow" },
@@ -182,6 +257,8 @@ async function main() {
     fs.writeFileSync(path.resolve(process.cwd(), "release-raw.csv"), rawParser.parse(allRawStats));
 
     console.log("CSV saved to release_stats.csv and release-raw.csv");
+
+    // renderDashboard(chartDefinitions, allStats, allRawStats);
 }
 
 main().catch((e) => {
