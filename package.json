@@ -22,10 +22,17 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@types/json2csv": "^5.0.7",
     "concurrently": "^9.1.2",
     "prettier": "^3.5.3"
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.5.0",
+    "json2csv": "^6.0.0-alpha.2",
+    "node-fetch": "^3.3.2"
   }
 }
