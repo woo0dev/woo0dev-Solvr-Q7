@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { parseISO, format, startOfWeek, startOfYear } from "date-fns";
+import { parseISO, format, startOfWeek, startOfYear, getDay } from "date-fns";
 import { Parser } from "json2csv";
 import * as fs from "fs";
 import * as path from "path";
@@ -62,6 +62,11 @@ function groupByPeriod(releases: Release[], repo: string): StatRecord[] {
   releases.forEach(({ published_at }) => {
     const date = parseISO(published_at);
 
+    const dayOfWeek = getDay(date);
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return;
+    }
+
     const dayKey = format(date, "yyyy-MM-dd");
     const weekStart = startOfWeek(date, { weekStartsOn: 1 });
     const weekKey = format(weekStart, "yyyy-'W'II");
@@ -102,7 +107,7 @@ async function main() {
     const stats = groupByPeriod(releases, repo);
     allStats = allStats.concat(stats);
   }
-  
+
   const parser = new Parser({ fields: ["repo", "period", "date", "count"] });
   const csv = parser.parse(allStats);
 
